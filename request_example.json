@@ -1,0 +1,76 @@
+{
+      "repeat":false,
+      "information":{
+            "chapter":0,
+            "title":0,
+            "titles":[],
+            "chapters":[],
+            "category":{
+                "Stream 0":{
+                      "Type":"Audio",
+                      "Codec":"MPEG Audio layer 1/2 (mpga)",
+                      "Bitrate":"320 kb/s",
+                      "Sample_rate":"44100 Hz",
+                      "Channels":"Stereo"
+                },
+                "meta":{
+                      "title":"eMotion Of Circles",
+                      "date":"2010",
+                      "album":"Altered - Second Movements",
+                      "artist":"Solar Fields",
+                      "artwork_url":"file:///home/iveks/.cache/vlc/art/artistalbum/Solar%20Fields/Altered%20-%20Second%20Movements/art.jpg",
+                      "track_total":"11",
+                      "publisher":"Ultimae Records",
+                      "genre":"Ambient",
+                      "track_number":"2",
+                      "filename":"eMotion Of Circles"
+                }
+            }
+      },
+      "length":442,
+      "state":"playing",
+      "subtitledelay":0,
+      "stats":{
+            "demuxcorrupted":0,
+            "playedabuffers":9024,
+            "demuxreadpackets":0,
+            "sendbitrate":0,
+            "demuxreadbytes":9430203,
+            "sentpackets":0,
+            "readbytes":9432924,
+            "averagedemuxbitrate":0,
+            "demuxbitrate":0.039999213069677,
+            "sentbytes":0,
+            "decodedvideo":0,
+            "inputbitrate":0.040361605584621,
+            "demuxdiscontinuity":0,
+            "displayedpictures":0,
+            "lostabuffers":0,
+            "lostpictures":0,
+            "readpackets":9180,
+            "averageinputbitrate":0,
+            "decodedaudio":9024
+      },
+      "equalizer":[],
+      "time":235,
+      "version":"2.2.4 Weatherwax",
+      "loop":false,
+      "random":true,
+      "position":0.53264558315277,
+      "audiofilters":{
+          "filter_0":""
+      },
+      "audiodelay":0,
+      "currentplid":376,
+      "apiversion":3,
+      "rate":1,
+      "fullscreen":0,
+      "videoeffects":{
+          "hue":0,
+          "saturation":1,
+          "contrast":1,
+          "gamma":1,
+          "brightness":1
+      },
+      "volume":248
+}
