@@ -1,5 +1,5 @@
 var player=(function(){
-        var version=2.0;
+        var version=2.01;
 
         var inc=(function(){
                 var id=0;
@@ -213,7 +213,7 @@ var player=(function(){
                                 $("<div>").class("barwrapper").on("click",function(evt){
                                         // Get the position where we clicked 0..1
                                         var xpos=evt.mousePosition().x;
-                                        controller.command("seek",Math.round(xpos*100)+"%");
+                                        controller.command("seek",{val:Math.round(xpos*100)+"%"});
                                 }).append($progressbar)
                         );
 
