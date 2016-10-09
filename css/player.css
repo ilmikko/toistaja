@@ -4,17 +4,18 @@
         box-shadow: inset 0px 0px 100px 22px black;
 }
 .player .square{
-        position:relative;
+        position:absolute;
         width:100%;
         height:100%;
+        padding:22px;
+        left:50%;
         top:50%;
-        transform: translateY(-50%);
+        transform: translate(-50%,-50%);
         margin:0 auto;
 }
 .player .info{
         width:100%;
         height:100%;
-        padding:10% 10% 3% 10%;
         text-shadow:0px 0px 4px black;
         display:flex;
         flex-direction: column;
@@ -54,17 +55,18 @@
 .player .controls{
         opacity:0;
         width:100%;
-        padding:4%;
+        padding:2%;
         text-align:justify;
         text-align-last:center;
 }
 .player .barwrapper{
         display:block;
-        width:75%;
-        height:4px;
+        width:80%;
+        height:7px;
         border:1px solid white;
         border-radius:3px;
-        margin:4% auto;
+        margin: 5px auto;
+        margin-bottom: 0;
         box-shadow:0px 0px 4px black;
 }
 .player .progressbar{
@@ -80,6 +82,22 @@
         border-radius:4%;
         width:50px;
         height:20px;
-        margin:0px 4px;
+        margin:0 4px;
         color:white;
+}
+.player input{
+        font:sans 2em;
+        background-color:transparent;
+        border:2px solid white;
+        border-radius:4%;
+        width:100%;
+        color:white;
+}
+.player .search{
+        transform:translate(50%,-50%);
+}
+.player .playlist .item{
+        border:1px solid white;
+        overflow: hidden;
+        text-overflow: ellipsis;
 }

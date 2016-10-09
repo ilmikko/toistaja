@@ -39,6 +39,7 @@ var _=(function(){
                                 var d=data[id];
                                 if (d==null) return;
                                 for (var g=0,glen=d.length;g<glen;g++){
+                                        evt.preventDefault();
                                         d[g](evt);
                                 }
                         }

@@ -1,5 +1,5 @@
 {
-  "main":"http://:toistaja@localhost:8080",
+  "main":"http://:toistaja@localhost:2244",
   "name":"Toistaja",
   "chromium-args": "--disable-web-security --user-data-dir",
   "window":{
