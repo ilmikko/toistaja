@@ -1,5 +1,5 @@
 var alt=(function(){
-        var version=2.742;
+        var version=2.744;
 
         /*
                 TODO:
@@ -116,6 +116,10 @@ var alt=(function(){
                                         //TAGNAME
                                         var name=anything.slice(1);
                                         return wrapper.create(document.getElementsByTagName(name),"group");
+                                }else if (firstchar=="."){
+                                        //CLASS
+                                        var classname=anything.slice(1);
+                                        return wrapper.create(document.getElementsByClassName(classname),"group");
                                 }else{
                                         //First char not recognized, create a text node
                                         return wrapper.create(document.createTextNode(anything));
@@ -164,52 +168,6 @@ var alt=(function(){
 
         // ** ------------------------------------ CONSTRUCTORS ------------------------------------ **//
 
-        function Animation(keyframes,style){
-                if (keyframes.length<=1) console.warn("Animation with keyframe length "+keyframes.length+" is probably useless");
-                this.name=animation.genName();
-                this.keyframes=keyframes;
-                this.properties=keyframes.getProperties();
-                this.style=style;
-        }
-
-        /*
-                Handles the animation style property and multiple animations at the same time
-        */
-        function AnimProperties(){
-                this.data=[];
-        }
-        AnimProperties.prototype={
-                add:function(animproperty){
-                        this.data.push(animproperty);
-                        return animproperty;
-                },
-                toString:function(){
-                        return this.data.join(",");
-                },
-                remove:function(name){
-                        for (var g=0,glen=this.data.length;g<glen;g++){
-                                if (this.data[g].animation.name==name){var o=this.data[g];this.data.splice(g,1);return o;}
-                        }
-                }
-        };
-
-        function AnimProperty(animation,options){
-                this.options=options;
-                this.animation=animation;
-        }
-        AnimProperty.prototype={
-                toString:function(){
-                        var anim=this.animation,opts=this.options;
-                        return [anim.name,opts.duration,opts.timingFunction,opts.delay,opts.iterationCount,opts.direction,opts.fillMode,opts.playState].join(" ");
-                }
-        };
-
-        function fromCamelCase(str){
-                return str.replace(/[A-Z]/g,function(a){
-                        return "-"+a.toLowerCase();
-                });
-        }
-
         function CSS(css){
                 this.data=css;
         }
@@ -249,6 +207,19 @@ var alt=(function(){
                 }
         };
 
+        function Animation(keyframes,style){
+                if (keyframes.length<=1) console.warn("Animation with keyframe length "+keyframes.length+" is probably useless");
+                this.name=animation.genName();
+                this.keyframes=keyframes;
+                this.properties=keyframes.getProperties();
+                this.style=style;
+        }
+
+        function fromCamelCase(str){
+                return str.replace(/[A-Z]/g,function(a){
+                        return "-"+a.toLowerCase();
+                });
+        }
 
         // ** ----------------------------------- ALT EVENT WRAPPER ----------------------------------- **//
 
@@ -387,10 +358,58 @@ var alt=(function(){
                 })();
 
                 wrappers['animation']=(function(){
+                        //FIXME FIXME FIXME THIS DOES NOT WORK AS SOON AS THE USER CREATES AN ANOTHER ALT3 ELEMENT WITH THE SAME DESCRIPTOR
+                        function AnimProperties(id){
+                                this.data=[];
+                                this._id=id;
+                        }
+                        AnimProperties.prototype={
+                                add:function(animproperty){
+                                        console.log("Add property (#%s)",this._id);
+                                        this.data.push(animproperty);
+                                        return animproperty;
+                                },
+                                get:function(name){
+                                        for (var g=0,glen=this.data.length;g<glen;g++){
+                                                if (this.data[g].animation.name==name) return this.data[g];
+                                        }
+                                },
+                                toString:function(){
+                                        return this.data.join(",");
+                                },
+                                remove:function(name){
+                                        console.log("Remove property (#%s)",this._id);
+                                        for (var g=0,glen=this.data.length;g<glen;g++){
+                                                if (this.data[g].animation.name==name){var o=this.data[g];this.data.splice(g,1);return o;}
+                                        }
+                                }
+                        };
+
+                        function AnimProperty(animation,options){
+                                this.options=options;
+                                this.animation=animation;
+                        }
+                        AnimProperty.prototype={
+                                toString:function(){
+                                        var anim=this.animation,opts=this.options;
+                                        return [anim.name,opts.duration,opts.timingFunction,opts.delay,opts.iterationCount,opts.direction,opts.fillMode,opts.playState].join(" ");
+                                }
+                        };
                         var aw=function altWrapperAnimation(){};
                         aw.prototype={
                                 __initAnimation:function(){
-                                        this._animproperties=new AnimProperties();
+                                        console.log("INIT ANIM FOR ELEM ID #%s",this._id);
+                                        this._animproperties=new AnimProperties(this._id);
+                                        this._animations={};
+                                        var self=this;
+
+                                        this._listen("animationend",function(evt){
+                                                var animationName=evt.animationName;
+                                                console.log("An animation %s has ended on an alt3 animation enabled element. (#%s)",animationName,self._id);
+                                                var prop=self._removeAnimation(animationName);
+                                                var callback=prop.options.callback;
+                                                if (callback) callback();
+                                        },{native:true});
                                 },
 
                                 _getCurrentSnapshot:function(props){
@@ -408,15 +427,6 @@ var alt=(function(){
 
                                 _addAnimation:function(animation,options){
                                         var prop=this._animproperties.add(new AnimProperty(animation,options));
-                                        var self=this;
-                                        prop.eventId=this._listen("animationend",function(evt){
-                                                //console.log("CSS: "+evt.animationName+" has ended");
-                                                var animationName=evt.animationName;
-                                                if (options.callback) options.callback();
-                                                if (animationName==prop.animationName){
-                                                        self._removeAnimation(animationName);
-                                                }
-                                        },{native:true});
 
                                         return this._updateCSSProperties();
                                 },
@@ -427,12 +437,10 @@ var alt=(function(){
                                                 this.css(this._getCurrentSnapshot(prop.animation.properties));
                                         }
 
-
                                         if (!prop.options.doNotRemove) animation.remove(name);
 
-                                        this._deafen(prop.eventId);
-
-                                        return this._updateCSSProperties();
+                                        this._updateCSSProperties();
+                                        return prop;
                                 },
 
                                 _animate:function(anim,options){
@@ -495,6 +503,7 @@ var alt=(function(){
                 wrappers['one']=(function(wevent,wanimation,winput){
                         var aw=function altWrapperOne(element){
                                 this.length=0;
+                                this._id=genId();
                                 this._set(element);
                                 this.__initEvents();
                                 this.__initAnimation();

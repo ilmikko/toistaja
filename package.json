@@ -1,7 +1,6 @@
 {
-  "main":"http://:toistaja@localhost:2244",
+  "main":"index.html",
   "name":"Toistaja",
-  "chromium-args": "--disable-web-security --user-data-dir",
   "window":{
     "width":322,
     "height":322

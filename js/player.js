@@ -1,12 +1,19 @@
 var player=(function(){
-        var version=2.22;
+        var version=2.26;
+
+        var remote="http://:toistaja@localhost:2244"; // Where VLC is running
+        var normalVolume=256; // The middle point of the volume
 
         // TODO:
-        // Like/dislike button (wow, this is a cool song!) map to L & D, save to JSON, bind to title tjsp (as playlist id can change)
+        // Like/dislike button (wow, this is a cool song!) map to L & D
         // Better info
         //        (when album is clicked, show all songs of the album)
         //        When the title is clicked, show more info of the actual track
         //        When the artist is clicked, find songs from the same artist...
+        // Internal playlist
+        //        Play next - button
+        //        What is going to play next?
+        // ALT (haha, lol)
 
         var inc=(function(){var id=0;return function(){return id++;}})();
 
@@ -32,13 +39,19 @@ var player=(function(){
 
         var controller=(function(){
                 var $player=$("<div>").class("player");
-                var $square=$("<div>").class("square");
-                var $controls=$("<div>").class("controls");
-                var $infotop,$infobot;
-                var $info=$("<div>").class("info").append(
-                        $infotop=$("<div>").class("infotop"),
-                        $infobot=$("<div>").class("infobot")
+                var $top,$mid,$bot;
+                var $square=$("<div>").class("square center").append(
+                        $top=$("<div>").class("top"),
+                        $("<div>").class("mid").append(
+                                $left=$("<div>").class("left"),
+                                $mid=$("<div>").class("mid"),
+                                $right=$("<div>").class("right")
+                        ),
+                        $bot=$("<div>").class("bot")
                 );
+
+                var $controls;
+                $bot.append($controls=$("<div>").class("controls center hide"));
 
                 var $out=$("<div>");
 
@@ -79,17 +92,17 @@ var player=(function(){
                                 tries++;
                                 if (tries==1){
                                         console.log("Loader: Cannot use local image, trying /art...");
-                                        this.set({src:"/art?r="+inc()});
+                                        this.set({src:remote+"/art?r="+inc()});
                                 }else if (tries==2){
                                         console.log("Loader: Cannot use /art, trying noart image...");
-                                        this.set({src:"img/noart.jpg?r="+inc()});
+                                        this.set({src:"/img/noart.jpg?r="+inc()});
                                 }else throw new Error("Loader: Cannot use noart image!");
                         });
                         var $albumart=$("<img>").class("albumart");
-                        var $backgroundart=$("<img>").class("backgroundart");
+                        var $backgroundart=$("<img>").class("backgroundart center");
 
                         $player.append($backgroundart)
-                        $square.append($albumart);
+                        $mid.append($albumart);
 
                         return {
                                 toFull:function(){
@@ -137,9 +150,11 @@ var player=(function(){
                                 })
 
                         $controls.append(
-                                $prevbutton,
-                                $pausebutton,
-                                $nextbutton
+                                $("<div>").class("buttonwrapper").append(
+                                        $prevbutton,
+                                        $pausebutton,
+                                        $nextbutton
+                                )
                         );
 
                         return {
@@ -163,8 +178,8 @@ var player=(function(){
                         var $artist=$("<span>");
                         var $album=$("<span>");
 
-                        $infotop.append(
-                                $("<div>").append(
+                        $top.append(
+                                $("<div>").class("center").append(
                                         $("<p>").append(
                                                 $title,
                                                 $(" - "),
@@ -176,34 +191,53 @@ var player=(function(){
 
                         return {
                                 hide:function(){
-                                        $info.to({opacity:0}).css({pointerEvents:"none"});
+                                        $square.to({opacity:0}).css({pointerEvents:"none"});
                                 },
                                 show:function(){
-                                        $info.to({opacity:1}).css({pointerEvents:"auto"});
+                                        $square.to({opacity:1}).css({pointerEvents:"auto"});
                                 },
                                 update:function(meta){
                                         if (meta==null){
-                                                $infotop.css({opacity:0});
+                                                $top.css({opacity:0});
                                                 document.title="";
                                         }else{
-                                                $infotop.do([{opacity:0},{opacity:1}],{duration:"4s"});
+                                                $top.do([{opacity:0},{opacity:1}],{duration:"4s"});
                                                 var title=meta.title||meta.filename||"No Title",
                                                         artist=meta.artist||"Unknown Artist",
                                                         album=meta.album||"Unknown Album";
                                                 $title.text(title);
                                                 $artist.text(artist);
                                                 $album.text(album);
-                                                document.title=[title,artist,album].join("-");
+                                                document.title=[title,artist,album].join(" - ");
                                         }
                                 }
                         };
                 })();
 
+                var volumebar=(function(){
+                        var $volumebar=$("<div>");
+
+                        $left.append(
+                                $("<div>").class("volumebar center hide").on("click",function(evt){
+                                        // Get the position where we clicked 0..1
+                                        var ypos=1-evt.mousePosition().y; // Invert because we want a value from bottom to top rather than top to bottom
+                                        console.log("Set volume to %s",Math.round(ypos*normalVolume*2));
+                                        controller.command("volume",{val:Math.round(ypos*normalVolume*2)});
+                                }).append($volumebar)
+                        );
+
+                        return {
+                                update:function(volume){
+                                        $volumebar.css({height:volume*100+"%"});
+                                }
+                        };
+                })();
+
                 var progressbar=(function(){
-                        var $progressbar=$("<div>").class("progressbar");
+                        var $progressbar=$("<div>");
 
                         $controls.append(
-                                $("<div>").class("barwrapper").on("click",function(evt){
+                                $("<div>").class("progressbar").on("click",function(evt){
                                         // Get the position where we clicked 0..1
                                         var xpos=evt.mousePosition().x;
                                         controller.command("seek",{val:Math.round(xpos*100)+"%"});
@@ -254,7 +288,7 @@ var player=(function(){
 
                                 return {
                                         search:function search(str){
-                                                _.ajax("requests/search.json",{
+                                                _.ajax(remote+"/requests/search.json",{
                                                         data:{search:str},
                                                         callback:function(response){
                                                                 var json=JSON.parse(response);
@@ -280,7 +314,7 @@ var player=(function(){
                                 };
                         })();
 
-                        var $search=$("<search>").class("square search").append(
+                        var $search=$("<search>").class("square center search").append(
                                 $searchbarslave,
                                 $playlist
                         );
@@ -309,7 +343,7 @@ var player=(function(){
 
                 function update(callback){
                         // Get an update from VLC and pass it to the controller
-                        _.get("requests/status.json",function(response){
+                        _.get(remote+"/requests/status.json",function(response){
                                 controller.update(response);
                         });
                         setTimeout(update,400);
@@ -320,10 +354,10 @@ var player=(function(){
 
                         $square.on("mouseenter",function(){
                                 if (player.layout=="normal")
-                                        $controls.to({opacity:1},{duration:"400ms"});
+                                        $(".hide").to({opacity:1},{duration:"400ms"});
                         }).on("mouseleave",function(){
                                 if (player.layout=="normal")
-                                        $controls.to({opacity:0});
+                                        $(".hide").to({opacity:0});
                         });
 
                         info.show();
@@ -332,16 +366,15 @@ var player=(function(){
                 });
 
                 $player.append(
-                        $square.append(
-                                $info.append(
-                                        $controls
-                                )
-                        )
+                        $square
                 );
 
                 var previousplaylistid;
 
+
+
                 return {
+                        meta:{},
                         albumart:albumart,
                         buttons:buttons,
                         info:info,
@@ -366,20 +399,26 @@ var player=(function(){
                                 var position=json.position;
                                 if (!isNaN(position)) progressbar.update(position);
 
+                                // Volume bar!
+                                var volume=json.volume;
+                                if (!normalVolume&&!isNaN(volume)) normalVolume=volume;
+                                var normalizedVolume=(volume/normalVolume)/2;
+                                if (!isNaN(normalizedVolume)) volumebar.update(normalizedVolume);
+
                                 // Then we detect if the track has changed.
                                 var playlistid=json.currentplid;
                                 if (playlistid!=previousplaylistid){
                                         previousplaylistid=playlistid;
                                         console.log("TRACK CHANGE!");
 
+                                        var meta;
                                         try{
-                                                var meta=json.information.category.meta;
+                                                player.meta=meta=json.information.category.meta;
                                         }
                                         catch(err){
                                                 console.warn("VLC returned a rubbish meta! %s",err);
                                                 return;
                                         }
-                                        console.log(meta);
 
                                         // Update everything that gets updated when the track changes
 
@@ -395,7 +434,7 @@ var player=(function(){
                                 var data={};
                                 data['command']=cmd;
                                 if (ext) $.extend(data,ext);
-                                _.ajax("requests/status.json",{
+                                _.ajax(remote+"/requests/status.json",{
                                         data:data,
                                         callback:function(response){controller.update(response);}
                                 });
