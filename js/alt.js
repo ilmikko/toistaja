@@ -1,5 +1,5 @@
 var alt=(function(){
-        var version=2.7;
+        var version=2.742;
 
         /*
                 TODO:
@@ -282,11 +282,10 @@ var alt=(function(){
                 _specialize:function(evt){
                         // Try to keep overhead as MINIMUM as possible.
                         this.o=evt;
-                        if (evt instanceof MouseEvent){
-                                console.log(evt.type+" - it's a mouse event!");
+                        if (evt instanceof KeyboardEvent){
+                                this.key=evt.keyCode;
                         }
                         if (evt instanceof AnimationEvent){
-                                console.log(evt.type+" - it's an animation event!");
                                 this.animation=animation.get(evt.animationName);
                         }
                 },
@@ -400,19 +399,26 @@ var alt=(function(){
                                         return o;
                                 },
 
+                                _updateCSSProperties:function(){
+                                        var self=this;
+                                        return this._each(function(){
+                                                this.style.animation=self._animproperties;
+                                        });
+                                },
+
                                 _addAnimation:function(animation,options){
                                         var prop=this._animproperties.add(new AnimProperty(animation,options));
                                         var self=this;
                                         prop.eventId=this._listen("animationend",function(evt){
-                                                console.log("CSS: "+evt.animationName+" has ended");
+                                                //console.log("CSS: "+evt.animationName+" has ended");
                                                 var animationName=evt.animationName;
                                                 if (options.callback) options.callback();
                                                 if (animationName==prop.animationName){
                                                         self._removeAnimation(animationName);
                                                 }
                                         },{native:true});
-                                        this[0].style.animation=this._animproperties;
-                                        return this;
+
+                                        return this._updateCSSProperties();
                                 },
                                 _removeAnimation:function(name){
                                         var prop=this._animproperties.remove(name);
@@ -420,12 +426,13 @@ var alt=(function(){
                                         if (prop.options.fillMode&&prop.options.fillMode.toLowerCase()=="forwards"){
                                                 this.css(this._getCurrentSnapshot(prop.animation.properties));
                                         }
-                                        this[0].style.animation=this._animproperties;
+
 
                                         if (!prop.options.doNotRemove) animation.remove(name);
 
                                         this._deafen(prop.eventId);
-                                        return this;
+
+                                        return this._updateCSSProperties();
                                 },
 
                                 _animate:function(anim,options){
@@ -468,7 +475,24 @@ var alt=(function(){
                         return aw;
                 })();
 
-                wrappers['one']=(function(wevent,wanimation){
+                wrappers['input']=(function(){
+                        var aw=function altWrapperInput(){};
+                        aw.prototype={
+                                blur:function(){
+                                        this._each(function(){
+                                                this.blur();
+                                        });
+                                },
+                                focus:function(){
+                                        this._each(function(){
+                                                this.focus();
+                                        });
+                                }
+                        };
+                        return aw;
+                })();
+
+                wrappers['one']=(function(wevent,wanimation,winput){
                         var aw=function altWrapperOne(element){
                                 this.length=0;
                                 this._set(element);
@@ -556,8 +580,9 @@ var alt=(function(){
 
                         alt.extend(aw.prototype,Object.create(wevent.prototype));
                         alt.extend(aw.prototype,Object.create(wanimation.prototype));
+                        alt.extend(aw.prototype,Object.create(winput.prototype));
                         return aw;
-                })(wrappers['event'],wrappers['animation']);
+                })(wrappers['event'],wrappers['animation'],wrappers['input']);
 
                 wrappers['group']=(function(wone){
                         var aw=function altWrapperGroup(enumerable){
@@ -597,7 +622,7 @@ var alt=(function(){
                         return aw;
                 })(wrappers['one']);
 
-                wrappers['empty']=(function(w){
+                wrappers['empty']=(function(wrappers){
                         var aw=function altWrapperEmpty(){};
                         aw.prototype={
                                 length:0
@@ -605,8 +630,8 @@ var alt=(function(){
 
                         var dummy=function(){return this;}
 
-                        for (var g in w){
-                                var prt=w[g].prototype;
+                        for (var g in wrappers){
+                                var prt=wrappers[g].prototype;
                                 for (var h in prt){
                                         aw.prototype[h]=dummy;
                                 }

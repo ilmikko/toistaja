@@ -1,12 +1,14 @@
 var player=(function(){
-        var version=2.01;
+        var version=2.22;
 
-        var inc=(function(){
-                var id=0;
-                return function(){
-                        return id++;
-                }
-        })();
+        // TODO:
+        // Like/dislike button (wow, this is a cool song!) map to L & D, save to JSON, bind to title tjsp (as playlist id can change)
+        // Better info
+        //        (when album is clicked, show all songs of the album)
+        //        When the title is clicked, show more info of the actual track
+        //        When the artist is clicked, find songs from the same artist...
+
+        var inc=(function(){var id=0;return function(){return id++;}})();
 
         _.key("Space",function(evt){
                 player.pause();
@@ -19,6 +21,13 @@ var player=(function(){
         });
         _.key("S",function(){
                 player.toggleSearch();
+        });
+        _.key("TAB",function(){
+                player.toggleSearch();
+        });
+        _.key("ESC",function(){
+                // I want back to the main screen!
+                player.toggleSearch(false);
         });
 
         var controller=(function(){
@@ -58,7 +67,6 @@ var player=(function(){
                 })();
 
                 var albumart=(function(){
-                        var currenturl="";
                         var tries=0;
                         var $loader=$("<img>").on("load",function(){
                                 console.log("Album art set successfully.");
@@ -94,17 +102,15 @@ var player=(function(){
                                         $albumart.to({opacity:1},{duration:"2s",delay:"1s"});
                                         $player.to({backgroundColor:"transparent"},{duration:"4s"});
                                 },
-                                hide:function(){
-                                        $albumart.stop().css({opacity:0});
-                                        $player.stop().css({backgroundColor:"black"});
+                                hide:function(callback){
+                                        $albumart.stop().to({opacity:0},{duration:"200ms"});
+                                        $player.stop().to({backgroundColor:"black"},{duration:"200ms",callback:callback});
                                 },
                                 update:function(url){
-                                        if (url!=currenturl){
-                                                console.log("Updating artwork url ("+url+"!="+currenturl+")");
-                                                currenturl=url;
-                                                controller.albumart.hide();
-                                                $loader.set({src:currenturl+"?r="+inc()});
-                                        }
+                                        console.log("Updating artwork url ("+url+")");
+                                        controller.albumart.hide(function(){
+                                                $loader.set({src:url+"?r="+inc()});
+                                        });
                                 }
                         };
                 })();
@@ -155,21 +161,19 @@ var player=(function(){
                 var info=(function(){
                         var $title=$("<span>");
                         var $artist=$("<span>");
+                        var $album=$("<span>");
 
-                        var $oneliner=$("<p>").append(
-                                $title,
-                                $artist
+                        $infotop.append(
+                                $("<div>").append(
+                                        $("<p>").append(
+                                                $title,
+                                                $(" - "),
+                                                $artist
+                                        ),
+                                        $album
+                                )
                         );
-                        var $album=$("<p>");
 
-                        var $songtitle=$("<div>").append(
-                                $oneliner,
-                                $album
-                        );
-
-                        $infotop.append($songtitle);
-
-                        var currentalbum="",currentartist="",currenttitle="",currentwindowtitle="";
                         return {
                                 hide:function(){
                                         $info.to({opacity:0}).css({pointerEvents:"none"});
@@ -179,28 +183,17 @@ var player=(function(){
                                 },
                                 update:function(meta){
                                         if (meta==null){
-                                                $title.text(currenttitle="");
-                                                $artist.text(currentartist="");
-                                                $album.text(currentalbum="");
-                                                document.title=currentwindowtitle="";
+                                                $infotop.css({opacity:0});
+                                                document.title="";
                                         }else{
-                                                var metaalbum=meta.album||"Unknown Album",
-                                                metaartist=meta.artist||"Unknown Artist",
-                                                metatitle=meta.title||meta.filename||"No Title",
-                                                metawindowtitle=[metatitle,metaartist,metaalbum].join(" - ");
-                                                if (currenttitle!=metatitle){
-                                                        $title.text(currenttitle=metatitle);
-                                                        $infotop.do([{opacity:0},{opacity:1}],{duration:"4s"});
-                                                }
-                                                if (currentartist!=metaartist){
-                                                        $artist.text(" - "+(currentartist=metaartist));
-                                                }
-                                                if (currentalbum!=metaalbum){
-                                                        $album.text(currentalbum=metaalbum);
-                                                }
-                                                if (currentwindowtitle!=metawindowtitle){
-                                                        document.title=currentwindowtitle=metawindowtitle;
-                                                }
+                                                $infotop.do([{opacity:0},{opacity:1}],{duration:"4s"});
+                                                var title=meta.title||meta.filename||"No Title",
+                                                        artist=meta.artist||"Unknown Artist",
+                                                        album=meta.album||"Unknown Album";
+                                                $title.text(title);
+                                                $artist.text(artist);
+                                                $album.text(album);
+                                                document.title=[title,artist,album].join("-");
                                         }
                                 }
                         };
@@ -218,22 +211,36 @@ var player=(function(){
                         );
 
                         return {
-                                update:function(json){
-                                        $progressbar.css({width:json.position*100+"%"});
+                                update:function(position){
+                                        $progressbar.css({width:position*100+"%"});
                                 }
                         };
                 })();
 
                 var search=(function(){
-
                         var $playlist=$("<div>").class("playlist");
 
-                        var $searchbar=$("<input>").on("keydown",function(evt){
-                                evt.stopPropagation();
-                        }).on("input",function(){
-                                // Search playlist
-                                playlist.search(this.value());
-                        });
+                        var $searchbarslave=$("<input>",{disabled:true});
+
+                        var $searchbar=$("<input>")
+                                .css({
+                                        opacity:0
+                                })
+                                .on("keydown",function(evt){
+                                        evt.stopPropagation();
+                                        if (evt.key==27||evt.key==9){ // TAB or ESC
+                                                player.toggleSearch(false);
+                                        }
+                                })
+                                .on("input",function(){
+                                        // Search playlist
+                                        var v=this.value();
+                                        playlist.search(v);
+                                        $searchbarslave.value(v);
+                                });
+                        // NOTE: There are two search bars. I ran into issues with pages and focusing as the search bar was out of view.
+                        // NOTE: So the input stays on the main page, and we merely copy its value to the "visual" search bar slave.
+
 
                         var playlist=(function(){
 
@@ -274,23 +281,25 @@ var player=(function(){
                         })();
 
                         var $search=$("<search>").class("square search").append(
-                                $searchbar,
+                                $searchbarslave,
                                 $playlist
                         );
 
-                        $player.append($search);
+                        $player.append($searchbar,$search);
 
                         return {
                                 playlist:playlist,
                                 hidden:true,
                                 show:function(){
                                         this.hidden=false;
+                                        $searchbar.focus();
                                         // Page transform effect
                                         $search.to({transform:"translate(-50%,-50%)"});
                                         $square.to({transform:"translate(-150%,-50%)"});
                                 },
                                 hide:function(){
                                         this.hidden=true;
+                                        $searchbar.blur();
                                         // Page transform back
                                         $search.to({transform:"translate(50%,-50%)"});
                                         $square.to({transform:"translate(-50%,-50%)"});
@@ -299,6 +308,7 @@ var player=(function(){
                 })();
 
                 function update(callback){
+                        // Get an update from VLC and pass it to the controller
                         _.get("requests/status.json",function(response){
                                 controller.update(response);
                         });
@@ -310,10 +320,10 @@ var player=(function(){
 
                         $square.on("mouseenter",function(){
                                 if (player.layout=="normal")
-                                $controls.to({opacity:1},{duration:"400ms"});
+                                        $controls.to({opacity:1},{duration:"400ms"});
                         }).on("mouseleave",function(){
                                 if (player.layout=="normal")
-                                $controls.to({opacity:0});
+                                        $controls.to({opacity:0});
                         });
 
                         info.show();
@@ -329,6 +339,8 @@ var player=(function(){
                         )
                 );
 
+                var previousplaylistid;
+
                 return {
                         albumart:albumart,
                         buttons:buttons,
@@ -338,17 +350,46 @@ var player=(function(){
                                 $body.append($player);
                         },
                         update:function(json){
-                                this.current=json=JSON.parse(json);
-                                if (json.information){
-                                        var meta=json.information.category.meta;
-                                        albumart.update(meta.artwork_url);
-                                        progressbar.update(json);
-                                        info.update(meta);
-                                }else{
-                                        albumart.update("img/noart.jpg");
-                                        info.update();
+                                try{
+                                        json=JSON.parse(json);
                                 }
+                                catch(err){
+                                        console.warn("VLC returned rubbish (not JSON)! %s",err);
+                                        return;
+                                }
+                                //console.log(json);
+                                // Detect only changes in the information, and send this information to the corresponding modules!
 
+                                // First everything that needs a continuous update.
+
+                                // Progress bar!
+                                var position=json.position;
+                                if (!isNaN(position)) progressbar.update(position);
+
+                                // Then we detect if the track has changed.
+                                var playlistid=json.currentplid;
+                                if (playlistid!=previousplaylistid){
+                                        previousplaylistid=playlistid;
+                                        console.log("TRACK CHANGE!");
+
+                                        try{
+                                                var meta=json.information.category.meta;
+                                        }
+                                        catch(err){
+                                                console.warn("VLC returned a rubbish meta! %s",err);
+                                                return;
+                                        }
+                                        console.log(meta);
+
+                                        // Update everything that gets updated when the track changes
+
+                                        // Album art! (the most important, IMHO)
+                                        var albumarturl=meta.artwork_url;
+                                        albumart.update(albumarturl);
+
+                                        // Album info! Titles and such!
+                                        info.update(meta);
+                                }
                         },
                         command:function(cmd,ext){
                                 var data={};
@@ -356,10 +397,7 @@ var player=(function(){
                                 if (ext) $.extend(data,ext);
                                 _.ajax("requests/status.json",{
                                         data:data,
-                                        callback:function(response){
-                                                console.log("RESPONSE");
-                                                controller.update(response);
-                                        }
+                                        callback:function(response){controller.update(response);}
                                 });
                         }
                 };
