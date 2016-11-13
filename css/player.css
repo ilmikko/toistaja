@@ -39,6 +39,7 @@
         width:25%;
 }
 .mid .mid{
+        position:relative;
         flex: 2 0;
         width:50%;
         height:100%;

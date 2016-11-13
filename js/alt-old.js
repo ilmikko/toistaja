@@ -1,13 +1,5 @@
 var alt=(function(){
-        var version=2.876;
-
-        /*
-                TODO:
-
-                        When everything else is finished:
-                        --      Module interaction (e.g. Transform module attaches to CSS custom properties)
-                        --      Animation "rescue mode"
-        */
+        var version=2.8022;
 
         var type=function(a){
                 var t=typeof a;
@@ -26,17 +18,6 @@ var alt=(function(){
 
         var listeners={};
         var animation=(function(){
-                function Animation(keyframes,style){
-                        if (keyframes.length<=1) console.warn("Animation with keyframe length "+keyframes.length+" is probably useless");
-                        this.name=animation.genName();
-                        this.keyframes=keyframes;
-                        this.properties=keyframes.getProperties();
-                        this.style=style;
-                }
-                Animation.prototype={
-                        _isAltAnimation:true
-                };
-
                 return {
                         data:{},
                         genName:function(){
@@ -66,6 +47,12 @@ var alt=(function(){
                 function Options(opts){
                         for (var g in opts) this[g]=opts[g];
                 }
+                Options.prototype={
+                        set:function(obj){
+                                for (var g in obj) if (!(g in this)) this[g]=obj[g];
+                                return this;
+                        }
+                };
                 return {
                         Alt:function(opts){
                                 opts=new Options(opts);
@@ -82,9 +69,9 @@ var alt=(function(){
                                         opts.iterationCount="infinite";
                                         opts.direction="alternate";
                                         // As the direction went alternate, we need to set the duration to be 2x faster
-                                        if (!isNaN(opts.ms)) opts.ms/=2;
+                                        opts.ms/=2;
                                 }
-                                if (!opts.duration) opts.duration=opts.ms+"ms";
+                                opts.duration=opts.ms+"ms";
                                 return opts;
                         },
                         Element:function(opts){
@@ -201,6 +188,7 @@ var alt=(function(){
                 opts=options.Alt(opts);
                 var e=alt.get(anything,opts);
 
+                // User-friendly convenience
                 e.set(opts.set);
 
                 return e;
@@ -238,31 +226,29 @@ var alt=(function(){
                         ["<p>","<a>"] - Returns a 'p' and an 'a' element
                         etc...
                 */
-                get:function(anything,opts){
+                get:function(anything,options){
                         var c=type(anything);
                         if (c==="string"){
                                 var firstchar=anything.charAt(0);
                                 if (firstchar==="<"){
                                         //DOM creation
                                         var tagname=anything.slice(1,-1);
-                                        return element.create(document.createElement(tagname),opts);
+                                        return element.create(document.createElement(tagname),options);
                                 }else if (firstchar=="#"){
                                         //ID
                                         var id=anything.slice(1);
-                                        return element.create(document.getElementById(id),opts);
+                                        return element.create(document.getElementById(id),options);
                                 }else if (firstchar==">"){
                                         //TAGNAME
                                         var name=anything.slice(1);
-                                        opts.id="group";
-                                        return element.create(document.getElementsByTagName(name),opts);
+                                        return element.create(document.getElementsByTagName(name),options.set({id:"group"}));
                                 }else if (firstchar=="."){
                                         //CLASS
                                         var classname=anything.slice(1);
-                                        opts.id="group";
-                                        return element.create(document.getElementsByClassName(classname),opts);
+                                        return element.create(document.getElementsByClassName(classname),options.set({id:"group"}));
                                 }else{
                                         //First char not recognized, create a text node
-                                        return element.create(document.createTextNode(anything),opts);
+                                        return element.create(document.createTextNode(anything),options);
                                 }
                         }else if (c==="enumerable"){
                                 // TODO: Alt is too strict about the empty sets, create a dummy empty set maybe?
@@ -280,10 +266,9 @@ var alt=(function(){
                                                 aww._each(function(){elementlist.push(this);});
                                         }
                                         if (elementlist.length==1){
-                                                return element.create(elementlist[0],opts);
+                                                return element.create(elementlist[0],options);
                                         }else if (elementlist.length>1){
-                                                opts.id="group";
-                                                return element.create(elementlist,opts);
+                                                return element.create(elementlist,options.set({id:"group"}));
                                         }else{
                                                 alert(anything.nodeType);
                                                 console.warn("Returning an empty wrapper for enumerable!");
@@ -315,6 +300,61 @@ var alt=(function(){
                         }else throw new Error("Alt cannot parse type: "+c);
                 }
         });
+
+        // ** ------------------------------------ CONSTRUCTORS ------------------------------------ **//
+
+        function CSS(css){
+                this.data=css;
+        }
+        CSS.prototype={
+                toString:function(){
+                        var self=this;
+                        return "{"+(function(){
+                                var str="";
+                                for (var g in self.data)
+                                        str+=fromCamelCase(g)+":"+self.data[g]+";";
+                                return str;
+                        })()+"}";
+                }
+        };
+
+        function Keyframes(keyframes){
+                this.data=[];
+                for (var g=0,glen=keyframes.length;g<glen;g++){
+                        this.data.push(new CSS(keyframes[g]));
+                }
+        }
+        Keyframes.prototype={
+                getProperties:function(){
+                        var props={};
+                        for (var g=0,glen=this.data.length;g<glen;g++)
+                                for (var h in this.data[g].data) props[h]=true;
+                        return props;
+                },
+                toString:function(name){
+                        var self=this;
+                        return "@keyframes "+name+" {"+(function(){
+                                var str="";
+                                for (var g=0,glen=self.data.length;g<glen;g++)
+                                        str+=(g/(glen-1)*100).toFixed(2)+"%"+self.data[g].toString();
+                                return str;
+                        })()+"}";
+                }
+        };
+
+        function Animation(keyframes,style){
+                if (keyframes.length<=1) console.warn("Animation with keyframe length "+keyframes.length+" is probably useless");
+                this.name=animation.genName();
+                this.keyframes=keyframes;
+                this.properties=keyframes.getProperties();
+                this.style=style;
+        }
+
+        function fromCamelCase(str){
+                return str.replace(/[A-Z]/g,function(a){
+                        return "-"+a.toLowerCase();
+                });
+        }
 
         // ** ----------------------------------- ALT EVENT WRAPPER ----------------------------------- **//
 
@@ -371,121 +411,17 @@ var alt=(function(){
 
         // ** --------------- MODULE CONFIG (Just for the sake of my sanity for now) --------------- ** //
 
-        (function Core(){
+        (function(){
                 return element.module("core",function(){
                         this._id=genId();
                         this.length=0;
                         this._set.apply(this,arguments);
                 },{
-                        _isAlt:true,// I identify as an alt element
+                        _isAlt:true,//I identify as an alt element
                 });
         })();
 
-        (function CSS(){
-                function Properties(parent){
-                        this.parent=parent;
-                        this.data={};
-                }
-                Properties.prototype={
-                        add:function(id,values,properties){
-                                this.init(id,properties);
-
-                                for (var g=0,glen=values.length;g<glen;g++){
-                                        var a=this.data[id];
-                                        // Add all the user values
-                                        a.push(values[g]);
-                                }
-                        },
-                        pop:function(id,count){
-                                var a=this.data[id];
-                                if (a==null) return;
-                                if (count>=a.length){count=a.length-1;} // NEVER remove the original one unless forced to
-                                a.splice(-count,count);
-                        },
-                        init:function(id,properties){
-                                if (!(id in this.data)) this.data[id]=[properties[id]];
-                        },
-                        apply:function(id){
-                                var self=this;
-                                this.parent._each(function(){return this.style[id]=self.get(id);});
-                                return self.get(id);
-                        },
-                        get:function(id,offset){
-                                if (offset==null) offset=0;
-                                var a=this.data[id];
-                                if (a==null) return;
-                                return a[a.length-1+offset];
-                        },
-                        getAll:function(){
-                                return this.parent._getCurrentProperties();
-                        }
-                };
-
-                return element.module("css",function(){
-                        this._properties=new Properties(this);
-                },{
-                        _getCurrentProperties:function(filter){
-                                var cs=window.getComputedStyle(this[0]);
-                                if (!filter) return cs;
-                                var o={};
-                                for (var g in filter){
-                                        o[g]=cs[g];
-                                }
-                                return o;
-                        },
-                        _sanitizeCSS:function(css){
-                                var _cachedProperties;
-                                var properties=this._properties;
-
-                                // Convert layers into proper CSS
-                                for (var h in css){
-                                        var val=css[h];
-                                        var t=type(val);
-                                        if (t==="enumerable"){
-                                                if (!_cachedProperties) {_cachedProperties=properties.getAll();}
-                                                properties.add(h,val,_cachedProperties);
-                                                css[h]=properties.get(h);
-                                        }else if (t==="number"){
-                                                properties.pop(h,-val);
-                                                css[h]=properties.get(h);
-                                        }else if (t==="string"){
-                                                if (!_cachedProperties) {_cachedProperties=properties.getAll();}
-                                                properties.init(h,_cachedProperties);
-                                        }else throw new Error("Cannot sanitize "+t+"!");
-                                        properties.apply(h);
-                                }
-                                return css;
-                        },
-                        css:function(obj){
-                                /*
-                                        Users can use several ways of declaring css properties
-                                        1. normal string backgroundColor:"red"
-                                        2. array backgroundColor:["red"] (This will create a new layer)
-                                        3. boolean backgroundColor:false (This will remove a layer)
-                                */
-                                var e=this[0],_cachedProperties;
-                                for (var g in obj){
-                                        var val=obj[g];
-                                        var t=type(val);
-                                        if (t==="enumerable"){
-                                                // Add n layers!
-                                                if (!_cachedProperties) {_cachedProperties=this._getCurrentProperties(obj);}
-                                                this._properties.add(g,val,_cachedProperties);
-                                                this._properties.apply(g);
-                                        }else if (t==="boolean"){
-                                                this._properties.pop(g,1);
-                                                this._properties.apply(g);
-                                        }else{
-                                                // Simple case!
-                                                e.style[g]=val;
-                                        }
-                                }
-                                return this;
-                        }
-                });
-        })();
-
-        (function Event(){
+        (function(){
                 function wrap(original,self,options){
                         return function(evt){
                                 if (options.onlyonce) self._deafen(id);
@@ -549,214 +485,133 @@ var alt=(function(){
                 });
         })();
 
-        (function Animation(){
-                function fromCamelCase(str){
-                        return str.replace(/[A-Z]/g,function(a){
-                                return "-"+a.toLowerCase();
-                        });
-                }
-
-                function CSS(css){
-                        this.data=css;
-                }
-                CSS.prototype={
-                        toString:function(){
-                                var self=this;
-                                return "{"+(function(){
-                                        var str="";
-                                        for (var g in self.data)
-                                                str+=fromCamelCase(g)+":"+self.data[g]+";";
-                                        return str;
-                                })()+"}";
-                        }
-                };
-
-                function Keyframes(keyframes){
+        (function(){
+                function AnimProperties(id){
                         this.data=[];
-                        for (var g=0,glen=keyframes.length;g<glen;g++){
-                                this.data.push(new CSS(keyframes[g]));
-                        }
+                        this._id=id;
                 }
-                Keyframes.prototype={
-                        getProperties:function(){
-                                var props={};
-                                for (var g=0,glen=this.data.length;g<glen;g++)
-                                        for (var h in this.data[g].data) props[h]=true;
-                                return props;
+                AnimProperties.prototype={
+                        add:function(animproperty){
+                                console.log("Add property (#%s)",this._id);
+                                this.data.push(animproperty);
+                                return animproperty;
                         },
-                        toString:function(name){
-                                var self=this;
-                                return "@keyframes "+name+" {"+(function(){
-                                        var str="";
-                                        for (var g=0,glen=self.data.length;g<glen;g++)
-                                                str+=(g/(glen-1)*100).toFixed(2)+"%"+self.data[g].toString();
-                                        return str;
-                                })()+"}";
-                        }
-                };
-
-                function Animation(animation,opts){
-                        this.id=animation.name;
-                        this.data=animation;
-                        this.properties=animation.properties;
-                        this.options=opts;
-                }
-                Animation.prototype={
+                        get:function(name){
+                                for (var g=0,glen=this.data.length;g<glen;g++){
+                                        if (this.data[g].animation.name==name) return this.data[g];
+                                }
+                        },
                         toString:function(){
-                                var anim=this.data,opts=this.options;
-                                return [anim.name,opts.duration,opts.timingFunction,opts.delay,opts.iterationCount,opts.direction,opts.fillMode,opts.playState].join(" ");
+                                return this.data.join(",");
+                        },
+                        remove:function(name){
+                                console.log("Remove property (#%s)",this._id);
+                                for (var g=0,glen=this.data.length;g<glen;g++){
+                                        if (this.data[g].animation.name==name){var o=this.data[g];this.data.splice(g,1);return o;}
+                                }
                         }
                 };
 
-                function Animations(parent){
-                        this.parent=parent;
-                        this.ordered=[];
-                        this.data={};
+                function AnimProperty(animation,options){
+                        this.options=options;
+                        this.animation=animation;
                 }
-                Animations.prototype={
-                        add:function(anim,opts){
-                                var prop=new Animation(anim,opts);
-                                this.data[prop.id]=prop;
-                                this.ordered.push(prop);
-                                this.updateProperties();
-                                return prop.id;
-                        },
-                        break:function(id){
-                                var prop=this.data[id];
-                                if (prop==null) return;
-                                if (prop.options.break) prop.options.break.call(this.parent);
-                                this.remove(id);
-                        },
-                        done:function(id){
-                                var prop=this.data[id];
-                                if (prop==null) return;
-                                if (prop.options.done) prop.options.done.call(this.parent);
-                                if (!prop.options.stay) this.remove(id);
-                        },
-                        each:function(callback){
-                                for (var g in this.data){
-                                        callback.call(this.data[g],g);
-                                }
-                        },
-                        remove:function(id){
-                                var prop=this.data[id];
-                                if (prop==null) return;
-
-                                var a=this.ordered;
-                                for (var g=0,glen=a.length;g<glen;g++){
-                                        if (a[g].id==id){
-                                                a.splice(g,1);
-                                                break;
-                                        }
-                                }
-
-                                delete this.data[id];
-                                if (!prop.options.doNotRemove) animation.remove(id);
-                                if (prop.options.callback) prop.options.callback.call(this.parent);
-
-                                this.updateProperties();
-                        },
-                        pop:function(count){
-                                var a=this.ordered;
-                                if (count>=a.length){count=a.length-1;} // NEVER remove the original one unless forced to
-                                for (var g=0,glen=count;g<glen;g++){
-                                        this.remove(a[a.length-g-1].id);
-                                }
-                        },
-                        getPropertyString:function(){
-                                return this.ordered.join(",");
-                        },
-                        updateProperties:function(){
-                                var props=this.getPropertyString();
-                                this.parent._each(function(){
-                                        this.style.animation=props;
-                                });
+                AnimProperty.prototype={
+                        toString:function(){
+                                var anim=this.animation,opts=this.options;
+                                return [anim.name,opts.duration,opts.timingFunction,opts.delay,opts.iterationCount,opts.direction,opts.fillMode,opts.playState].join(" ");
                         }
                 };
 
                 return element.module("animation",function(){
                         console.log("INIT ANIM FOR ELEM ID #%s",this._id);
-
-                        this._animations=new Animations(this);
-
+                        this._animproperties=new AnimProperties(this._id);
+                        this._animations={};
                         var self=this;
 
                         this._listen("animationend",function(evt){
                                 var animationName=evt.animationName;
                                 evt.stopPropagation(); // Prevent animation end affecting parent elements
                                 console.log("An animation %s has ended on an alt3 animation enabled element. (#%s)",animationName,self._id);
-                                self._animations.done(animationName);
+                                var prop=self._removeAnimation(animationName);
+                                var callback=prop.options.callback;
+                                if (callback) callback();
                         },{native:true});
                 },{
-                        _animate:function(array,opts){
-                                opts=options.Animation(opts);
-                                if (array.length==1){
-                                        // We need the first frame, as it wasn't specified
-                                        var currentcss=this._getCurrentProperties(array[0]);
-                                        array.unshift(currentcss);
+                        _getCurrentSnapshot:function(props){
+                                var cs=window.getComputedStyle(this[0]),o={};
+                                for (var g in props) o[g]=cs[g];
+                                return o;
+                        },
+
+                        _updateCSSProperties:function(){
+                                var self=this;
+                                return this._each(function(){
+                                        this.style.animation=self._animproperties;
+                                });
+                        },
+
+                        _addAnimation:function(animation,options){
+                                var prop=this._animproperties.add(new AnimProperty(animation,options));
+                                return this._updateCSSProperties();
+                        },
+                        _removeAnimation:function(name){
+                                var prop=this._animproperties.remove(name);
+                                //A forwards animation is the same as the properties set to the current state (if ended)
+                                if (prop.options.fillMode&&prop.options.fillMode.toLowerCase().search(/(both|forwards)/)>-1){
+                                        this.css(this._getCurrentSnapshot(prop.animation.properties));
                                 }
 
-                                for (var g=0,glen=array.length;g<glen;g++){
-                                        array[g]=this._sanitizeCSS(array[g]);
-                                }
+                                if (!prop.options.doNotRemove) animation.remove(name);
 
-                                var anim=animation.create(new Keyframes(array),opts);
-                                return this._animations.add(anim,opts);
+                                this._updateCSSProperties();
+                                return prop;
                         },
-                        anim:function(anything,opts){
-                                return this._animate(anything,opts);
+
+                        _animate:function(anim,options){
+                                //this.stop();
+                                this._addAnimation(anim,options);
+                                return this;
                         },
-                        stop:function(id){
-                                return this._animations.remove(id);
-                        },
+
                         do:function(anything,opts){
-                                var t=type(anything);
+                                opts=options.Animation(opts);
 
-                                if (t==="enumerable"){
+                                if (type(anything)==="enumerable"){
                                         // Interpret as keyframes
+                                        if (!opts.fillMode) opts.fillMode="forwards";
+                                        var anim=animation.create(new Keyframes(anything),opts);
+                                        this._animate(anim,opts);
+                                }else{
+                                        // Interpret as animation, do not remove in that case
+                                        opts.doNotRemove=true;
                                         this._animate(anything,opts);
-                                }else if (t==="object"){
-                                        if(anything._isAltAnimation){
-                                                // Already an animation, do not remove in that case as it's probably important
-                                                opts.doNotRemove=true;
-                                                this._animations.add(anything,opts);
-                                        }
                                 }
                                 return this;
                         },
-                        to:function(anything,opts){
-                                var t=type(anything);
+                        to:function(css,opts){
+                                opts=options.Animation(opts);
 
-                                if (t==="object"){
-                                        // Default behavior
-                                        // Make layers for every property we affect, as we want them to persist
-                                        for (var g in anything){
-                                                var val=anything[g];
-                                                if (type(val)!=="enumerable") anything[g]=[val];
-                                        }
-
-                                        // Animate
-                                        var ourid=this._animate([anything],opts);
-
-                                        // Deal with animations that use our properties
-                                        var self=this;
-                                        this._animations.each(function(g){
-                                                var props=this.properties;
-                                                for (var p in props) if (anything[p]&&this.id!=ourid){
-                                                        // Break this animation
-                                                        self._animations.break(this.id);
-                                                }
-                                        });
+                                if (type(css)!=="object") throw new Error("to: Cannot parse css, unknown type: "+type(css));
+                                this.stop();
+                                var currentcss=this._getCurrentSnapshot(css);
+                                var anim=animation.create(new Keyframes([currentcss,css]),opts);
+                                this._animate(anim,opts);
+                                return this;
+                        },
+                        stop:function(){
+                                for (var g=0,glen=this._animproperties.data.length;g<glen;g++){
+                                        this._removeAnimation(this._animproperties.data[g].animation.name);
                                 }
                                 return this;
-                        }
+                        },
                 },{
-                        requires:["css","event"],
+                        requires:["event"],
                         optional:false
                 });
         })();
 
-        (function Input(){
+        (function(){
                 return element.module("input",null,{
                         blur:function(){
                                 this._each(function(){
@@ -771,7 +626,7 @@ var alt=(function(){
                 });
         })();
 
-        (function DOM(){
+        (function(){
                 return element.module("dom",null,{
                         // DOM attributes
                         set:function(obj){
@@ -836,9 +691,8 @@ var alt=(function(){
                 });
         })();
 
-        (function One(){
+        (function(){
                 return element.module("one",null,{
-                        // TODO: Clean up and rearrange helpers like "value" and "text", etc
                         _set:function(element){
                                 this.length=1;
                                 this[0]=element;
@@ -860,17 +714,22 @@ var alt=(function(){
                                 this[0].className=name;
                                 return this;
                         },
+                        css:function(obj){
+                                var e=this[0];
+                                for (var g in obj) e.style[g]=obj[g];
+                                return this;
+                        },
                         value:function(val){
                                 if (val==null) return this[0].value;
                                 this[0].value=val;
                                 return this;
                         }
                 },{
-                        requires:["core","css","dom","input","animation","event"]
+                        requires:["core","dom","input","animation","event"]
                 });
         })();
 
-        (function Group(){
+        (function(){
                 return element.module("group",null,{
                         _set:function(elements){
                                 this.length=elements.length;
@@ -886,7 +745,7 @@ var alt=(function(){
                                 return this;
                         }
                 },{
-                        requires:["core","css","dom","input","animation","event"],
+                        requires:["core","dom","input","animation","event"],
                         customExtend:function(t,o){
                                 for (var g in o){
                                         if (g[0]=="_") continue; // Skip properties that start with underscore

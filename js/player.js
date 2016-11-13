@@ -1,5 +1,5 @@
 var player=(function(){
-        var version=2.26;
+        var version=2.27;
 
         var remote="http://:toistaja@localhost:2244"; // Where VLC is running
         var normalVolume=256; // The middle point of the volume
@@ -81,6 +81,8 @@ var player=(function(){
 
                 var albumart=(function(){
                         var tries=0;
+                        var $albumart=$("<img>").class("albumart center");
+                        var $backgroundart=$("<img>").class("backgroundart center");
                         var $loader=$("<img>").on("load",function(){
                                 console.log("Album art set successfully.");
                                 tries=0;
@@ -98,26 +100,24 @@ var player=(function(){
                                         this.set({src:"/img/noart.jpg?r="+inc()});
                                 }else throw new Error("Loader: Cannot use noart image!");
                         });
-                        var $albumart=$("<img>").class("albumart");
-                        var $backgroundart=$("<img>").class("backgroundart center");
 
                         $player.append($backgroundart)
                         $mid.append($albumart);
 
                         return {
                                 toFull:function(){
-                                        $albumart.to({width:"95%",height:"95%"});
+                                        //$albumart.to({transform:"scale(2,2)"});
                                 },
                                 toSmall:function(){
-                                        $albumart.to({width:"50%",height:"50%"});
+                                        //$albumart.to({transform:false});
                                 },
                                 show:function(){
                                         $albumart.to({opacity:1},{duration:"2s",delay:"1s"});
                                         $player.to({backgroundColor:"transparent"},{duration:"4s"});
                                 },
                                 hide:function(callback){
-                                        $albumart.stop().to({opacity:0},{duration:"200ms"});
-                                        $player.stop().to({backgroundColor:"black"},{duration:"200ms",callback:callback});
+                                        $albumart.to({opacity:0},{duration:"200ms"});
+                                        $player.to({backgroundColor:"black"},{duration:"200ms",done:callback});
                                 },
                                 update:function(url){
                                         console.log("Updating artwork url ("+url+")");
@@ -129,7 +129,7 @@ var player=(function(){
                 })();
 
                 var buttons=(function(){
-                        var anim=[{boxShadow:"0px 0px 12px white",backgroundColor:"white"},{boxShadow:"0px 0px 0px transparent",backgroundColor:"transparent"}];
+                        var anim=[{boxShadow:"0px 0px 12px white",backgroundColor:"white"},{boxShadow:"0px 0px 0px transparent"}];
 
                         var $fancyButton=$("<button>").on("mouseenter",function(){
                                 this.to({backgroundColor:"rgba(255,255,255,0.2)"},{duration:"222ms"});
@@ -201,7 +201,7 @@ var player=(function(){
                                                 $top.css({opacity:0});
                                                 document.title="";
                                         }else{
-                                                $top.do([{opacity:0},{opacity:1}],{duration:"4s"});
+                                                $top.to({opacity:1},{duration:"4s"});
                                                 var title=meta.title||meta.filename||"No Title",
                                                         artist=meta.artist||"Unknown Artist",
                                                         album=meta.album||"Unknown Album";
@@ -254,12 +254,10 @@ var player=(function(){
                 var search=(function(){
                         var $playlist=$("<div>").class("playlist");
 
-                        var $searchbarslave=$("<input>",{disabled:true});
+                        var $searchbarslave=$("<input>").set({disabled:true});
 
                         var $searchbar=$("<input>")
-                                .css({
-                                        opacity:0
-                                })
+                                .css({opacity:0})
                                 .on("keydown",function(evt){
                                         evt.stopPropagation();
                                         if (evt.key==27||evt.key==9){ // TAB or ESC
@@ -283,7 +281,7 @@ var player=(function(){
                                 }).on("mouseleave",function(){
                                         this.to({backgroundColor:"transparent"},{duration:"400ms"});
                                 }).on("click",function(){
-                                        this.do([{boxShadow:"0px 0px 12px white",backgroundColor:"white"},{boxShadow:"0px 0px 0px transparent",backgroundColor:"transparent"}],{duration:"2s"});
+                                        this.do([{boxShadow:"0px 0px 12px white",backgroundColor:"white"},{boxShadow:"0px 0px 0px transparent"}],{duration:"2s"});
                                 });
 
                                 return {
@@ -314,7 +312,12 @@ var player=(function(){
                                 };
                         })();
 
-                        var $search=$("<search>").class("square center search").append(
+                        var $search=$("<search>")
+                        .on("click",function(){
+                                $searchbar.focus();
+                        })
+                        .class("square center search")
+                        .append(
                                 $searchbarslave,
                                 $playlist
                         );
@@ -447,12 +450,12 @@ var player=(function(){
                 toCompact:function(){
                         this.toggleSearch(false);
                         this.layout="compact";
-                        controller.info.hide();
+                        //controller.info.hide();
                         controller.albumart.toFull();
                 },
                 toNormal:function(){
                         this.layout="normal";
-                        controller.info.show();
+                        //controller.info.show();
                         controller.albumart.toSmall();
                 },
                 toggleSearch:function(force){
