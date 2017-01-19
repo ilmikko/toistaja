@@ -1,5 +1,5 @@
 var player=(function(){
-        var version=2.27;
+        var version=2.28;
 
         var remote="http://:toistaja@localhost:2244"; // Where VLC is running
         var normalVolume=256; // The middle point of the volume
@@ -19,6 +19,9 @@ var player=(function(){
 
         _.key("Space",function(evt){
                 player.pause();
+        });
+        _.key("Enter",function(evt){
+                player.toggleCompact();
         });
         _.key("N",function(){
                 player.next();
@@ -51,7 +54,9 @@ var player=(function(){
                 );
 
                 var $controls;
-                $bot.append($controls=$("<div>").class("controls center hide"));
+                $bot.append(
+                        $controls=$("<div>").class("controls center hide")
+                );
 
                 var $out=$("<div>");
 
@@ -81,15 +86,18 @@ var player=(function(){
 
                 var albumart=(function(){
                         var tries=0;
-                        var $albumart=$("<img>").class("albumart center");
-                        var $backgroundart=$("<img>").class("backgroundart center");
+                        var $albumart=$("<img>").class("albumart center").on("load",function(){
+                                this.to({opacity:1},{duration:"2200ms"});
+                        });
+                        var $backgroundart=$("<img>").class("backgroundart center").on("load",function(){
+                                $player.to({backgroundColor:"transparent"},{duration:"4s"});
+                        });
                         var $loader=$("<img>").on("load",function(){
                                 console.log("Album art set successfully.");
                                 tries=0;
                                 var src=this.get("src");
                                 $albumart.set({src:src});
                                 $backgroundart.set({src:src});
-                                albumart.show();
                         }).on("error",function(){
                                 tries++;
                                 if (tries==1){
@@ -102,27 +110,30 @@ var player=(function(){
                         });
 
                         $player.append($backgroundart)
-                        $mid.append($albumart);
+                        $mid.append(
+                                $("<div>").append(
+                                        $albumart
+                                )
+                        );
 
                         return {
                                 toFull:function(){
-                                        //$albumart.to({transform:"scale(2,2)"});
+                                        $albumart.to({transform:"translate(-50%,-50%) scale(2,2)"});
                                 },
                                 toSmall:function(){
-                                        //$albumart.to({transform:false});
+                                        $albumart.to({transform:"translate(-50%,-50%)"});
                                 },
-                                show:function(){
-                                        $albumart.to({opacity:1},{duration:"2s",delay:"1s"});
-                                        $player.to({backgroundColor:"transparent"},{duration:"4s"});
-                                },
+                                show:function(){},
                                 hide:function(callback){
-                                        $albumart.to({opacity:0},{duration:"200ms"});
-                                        $player.to({backgroundColor:"black"},{duration:"200ms",done:callback});
+                                        $albumart.to({opacity:0},{duration:"300ms",done:callback});
+                                        $player.to({backgroundColor:"black"},{duration:"200ms"});
                                 },
                                 update:function(url){
                                         console.log("Updating artwork url ("+url+")");
                                         controller.albumart.hide(function(){
-                                                $loader.set({src:url+"?r="+inc()});
+                                                setTimeout(function(){
+                                                        $loader.set({src:url+"?r="+inc()});
+                                                },2000);
                                         });
                                 }
                         };
@@ -151,9 +162,11 @@ var player=(function(){
 
                         $controls.append(
                                 $("<div>").class("buttonwrapper").append(
-                                        $prevbutton,
-                                        $pausebutton,
-                                        $nextbutton
+                                        $("<div>").append(
+                                                $prevbutton,
+                                                $pausebutton,
+                                                $nextbutton
+                                        )
                                 )
                         );
 
@@ -166,6 +179,12 @@ var player=(function(){
                                 },
                                 next:function(){
                                         $nextbutton.do(anim,{duration:"2s"});
+                                },
+                                hide:function(){
+                                        $(".hide").to({opacity:0});
+                                },
+                                show:function(){
+                                        $(".hide").to({opacity:1},{duration:"400ms"});
                                 },
                                 update:function(json){
 
@@ -191,10 +210,10 @@ var player=(function(){
 
                         return {
                                 hide:function(){
-                                        $square.to({opacity:0}).css({pointerEvents:"none"});
+                                        $top.to({opacity:0}).css({pointerEvents:"none"});
                                 },
                                 show:function(){
-                                        $square.to({opacity:1}).css({pointerEvents:"auto"});
+                                        $top.to({opacity:1}).css({pointerEvents:"auto"});
                                 },
                                 update:function(meta){
                                         if (meta==null){
@@ -235,18 +254,32 @@ var player=(function(){
 
                 var progressbar=(function(){
                         var $progressbar=$("<div>");
+                        var $current=$("<span>").text("-:-"),$length=$("<span>").text("-:-");
 
                         $controls.append(
-                                $("<div>").class("progressbar").on("click",function(evt){
-                                        // Get the position where we clicked 0..1
-                                        var xpos=evt.mousePosition().x;
-                                        controller.command("seek",{val:Math.round(xpos*100)+"%"});
-                                }).append($progressbar)
+                                $("<div>").class("progressbar")
+                                .on("click",function(evt){
+                                        controller.command("seek",{val:Math.round(evt.mousePosition().x*100)+"%"});
+                                }).append($progressbar),
+                                $("<div>",{class:"progresstext centerx"}).append(
+                                        $current,$("<div>",{class:"separator"}),$length
+                                )
                         );
 
+                        function format(s){
+                                var m=Math.floor(s/60);
+                                var s=Math.floor(s-m*60);
+
+                                return ('00'+m).slice(-2)+":"+('00'+s).slice(-2);
+                        }
+
                         return {
-                                update:function(position){
+                                update:function(position,length){
                                         $progressbar.css({width:position*100+"%"});
+                                        var currentseconds=position*length;
+                                        var lengthseconds=length;
+                                        $current.text(format(currentseconds));
+                                        $length.text(format(lengthseconds));
                                 }
                         };
                 })();
@@ -300,6 +333,7 @@ var player=(function(){
                                                                                 $item.clone().text(item.name).on("click",(function(item){
                                                                                         return function(){
                                                                                                 $searchbar.value("");
+                                                                                                $searchbarslave.value("");
                                                                                                 search("");
                                                                                                 player.play(item);
                                                                                         }
@@ -349,18 +383,16 @@ var player=(function(){
                         _.get(remote+"/requests/status.json",function(response){
                                 controller.update(response);
                         });
-                        setTimeout(update,400);
+                        setTimeout(update,250);
                 }
 
                 _.load(function(){
                         controller.insert();
 
-                        $square.on("mouseenter",function(){
-                                if (player.layout=="normal")
-                                        $(".hide").to({opacity:1},{duration:"400ms"});
+                        $square.on("mouseover",function(){
+                                if (player.layout=="normal") buttons.show();
                         }).on("mouseleave",function(){
-                                if (player.layout=="normal")
-                                        $(".hide").to({opacity:0});
+                                if (player.layout=="normal") buttons.hide();
                         });
 
                         info.show();
@@ -374,7 +406,12 @@ var player=(function(){
 
                 var previousplaylistid;
 
+                var currentSongStarttime=Date.now(),registeredAsPlayed=false;
 
+                function resetSongData(){
+                        currentSongStarttime=Date.now();
+                        registeredAsPlayed=false;
+                }
 
                 return {
                         meta:{},
@@ -390,17 +427,24 @@ var player=(function(){
                                         json=JSON.parse(json);
                                 }
                                 catch(err){
-                                        console.warn("VLC returned rubbish (not JSON)! %s",err);
+                                        //console.warn("VLC returned rubbish (not JSON)! %s",err);
                                         return;
                                 }
-                                //console.log(json);
+                                var meta;
+                                try{
+                                        player.meta=meta=json.information.category.meta;
+                                }
+                                catch(err){
+                                        console.warn("VLC returned a rubbish meta! %s",err);
+                                        return;
+                                }
                                 // Detect only changes in the information, and send this information to the corresponding modules!
 
                                 // First everything that needs a continuous update.
 
                                 // Progress bar!
-                                var position=json.position;
-                                if (!isNaN(position)) progressbar.update(position);
+                                var position=json.position,length=json.length;
+                                if (!isNaN(position)) progressbar.update(position,length);
 
                                 // Volume bar!
                                 var volume=json.volume;
@@ -408,20 +452,22 @@ var player=(function(){
                                 var normalizedVolume=(volume/normalVolume)/2;
                                 if (!isNaN(normalizedVolume)) volumebar.update(normalizedVolume);
 
+                                // Some additional data for Ratings
+                                // Determine if we have listened to this song
+                                // A song is determined played if we have spent 22% of the song's time playing the song (even if the song is paused)
+                                var percentListened=(Date.now()-currentSongStarttime)/(length*1000);
+                                if (percentListened>0.22&&!registeredAsPlayed){
+                                        registeredAsPlayed=true;
+                                        rating.played(meta);
+                                }
+
                                 // Then we detect if the track has changed.
                                 var playlistid=json.currentplid;
                                 if (playlistid!=previousplaylistid){
                                         previousplaylistid=playlistid;
                                         console.log("TRACK CHANGE!");
 
-                                        var meta;
-                                        try{
-                                                player.meta=meta=json.information.category.meta;
-                                        }
-                                        catch(err){
-                                                console.warn("VLC returned a rubbish meta! %s",err);
-                                                return;
-                                        }
+                                        resetSongData();
 
                                         // Update everything that gets updated when the track changes
 
@@ -450,12 +496,13 @@ var player=(function(){
                 toCompact:function(){
                         this.toggleSearch(false);
                         this.layout="compact";
-                        //controller.info.hide();
+                        controller.info.hide();
+                        controller.buttons.hide();
                         controller.albumart.toFull();
                 },
                 toNormal:function(){
                         this.layout="normal";
-                        //controller.info.show();
+                        controller.info.show();
                         controller.albumart.toSmall();
                 },
                 toggleSearch:function(force){
@@ -467,6 +514,15 @@ var player=(function(){
                                 }else{
                                         controller.search.hide();
                                 }
+                        }
+                },
+                toggleCompact:function(force){
+                        var s=force;
+                        if (s==null) s=this.layout=="normal";
+                        if (s){
+                                this.toCompact();
+                        }else{
+                                this.toNormal();
                         }
                 },
                 play:function(item){

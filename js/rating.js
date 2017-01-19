@@ -11,9 +11,9 @@ var rating=(function(){
         function Song(id,extend){
                 this.id=id;
                 this.score=0;
+                this.plays=0;
                 $.extend(this,extend);
         }
-
 
         return {
                 genIdFromMeta:function(meta){
@@ -35,6 +35,10 @@ var rating=(function(){
                 down:function(meta){
                         var song=this.getSongFromMeta(meta);
                         return --song.score;
+                },
+                played:function(meta){
+                        var song=this.getSongFromMeta(meta);
+                        return ++song.plays;
                 }
         };
 })();

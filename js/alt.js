@@ -675,7 +675,7 @@ var alt=(function(){
                 };
 
                 return element.module("animation",function(){
-                        console.log("INIT ANIM FOR ELEM ID #%s",this._id);
+                        //console.log("INIT ANIM FOR ELEM ID #%s",this._id);
 
                         this._animations=new Animations(this);
 
@@ -684,7 +684,7 @@ var alt=(function(){
                         this._listen("animationend",function(evt){
                                 var animationName=evt.animationName;
                                 evt.stopPropagation(); // Prevent animation end affecting parent elements
-                                console.log("An animation %s has ended on an alt3 animation enabled element. (#%s)",animationName,self._id);
+                                //console.log("An animation %s has ended on an alt3 animation enabled element. (#%s)",animationName,self._id);
                                 self._animations.done(animationName);
                         },{native:true});
                 },{
