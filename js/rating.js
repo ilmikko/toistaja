@@ -21,7 +21,7 @@ var rating=(function(){
                         // Properties that are needed to match to identify as the same song
                         var shash=crypt.createHash("sha1");
                         var matchProperties=["artist","album","title"];
-                        for (var g in matchProperties) shash.update(meta[matchProperties[g]]);
+                        for (var g in matchProperties) if (meta[matchproperties[g]]) shash.update(meta[matchProperties[g]]);
                         return shash.digest("hex");
                 },
                 getSongFromMeta:function(meta){
