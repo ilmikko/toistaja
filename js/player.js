@@ -1,7 +1,21 @@
+var config=global.config;
 var player=(function(){
         var version=2.28;
 
-        var remote="http://:toistaja@localhost:2244"; // Where VLC is running
+	var auth="";
+
+	var user=config.username;
+	var pass=config.password;
+
+	if (user||pass) {
+		auth=user+":"+pass+"@";
+	}
+
+	var host=config.host;
+	var port=config.port;
+
+        var remote="http://"+auth+host+":"+port; // Where VLC is running
+	console.log("Remote: "+remote);
         var normalVolume=256; // The middle point of the volume
 
         // TODO:
