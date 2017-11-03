@@ -1,4 +1,42 @@
-Toistaja - A lätinätön media player
+Toistaja - A lätinätön Media Player
 
-Initial commit
-Version 2
+
+== Installation ==
+
+As this is a web interface for VLC, you naturally need to install VLC for this to work.
+You might also want nwjs in order to get a neat little window for the player.
+Alternatively it works in browser, defaults to localhost:8080.
+
+Clone the repository to the place you want it to be installed in.
+
+`cd /opt`
+`git clone https://github.com/ilmikko/toistaja`
+
+Configure VLC as follows:
+
+Go to Advanced Preferences under Preferences
+
+Navigate to Interface > Main interfaces
+Tick 'Web' to enable the VLC HTTP interface.
+
+Navigate to Interface > Main interfaces > Lua
+Under the box "Lua HTTP", set up the Password and Source directory fields.
+(Password needs to match the password set in Toistaja's ./conf.json)
+(Source directory is the absolute directory where Toistaja and ./custom.lua lie in)
+
+And that's it, you have it installed!
+
+
+== Running ==
+
+In order to connect to the HTTP interface, you need to have VLC running in some way.
+I prefer the headless version, because it can be run independently from the display manager.
+So if you do
+
+`cvlc ~/Music` (or wherever your music lies)
+
+And then
+
+`nw /path/to/toistaja`
+
+And that's it! Enjoy!
