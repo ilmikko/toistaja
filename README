@@ -9,7 +9,7 @@ I present to you: Toistaja! The Lätinätön Media Player(*).
 Now you can have your music server SEPARATE from the graphical interface! And when the display manager starts, just launch Toistaja to connect to that music server and see it behave just like an ordinary media player! Life has never been easier!
 
 lätinä (noun)
-1. The act of having a program or procedure to do more than it is supposed to, where it's behavior is unwanted, overly complicated or illogical in relation to the original task it was meant to solve.
+1. The act of having a program or procedure to do more than it is supposed to, where it's behavior is unwanted, overly complicated or illogical in relation to the original problem it was meant to solve.
 
 * This is more of an interface wrapper to VLC, but it doesn't sound as catchy.
 
