@@ -1,5 +1,14 @@
 Toistaja - A lätinätön Media Player
 
+Have you ever run into a problem where you're in the middle of the most awesome track in your library, only to realize that you have to restart the X server? I know I have.
+Where you can either break the flow and restart X, stopping your music abruptly, or wait for the track to end, wasting precious developer time. Isn't life just cruel sometimes?
+But this got me thinking: isn't there a THIRD option?
+
+I present to you: Toistaja! The Lätinätön Media Player(*).
+
+Now you can have your music server SEPARATE from the graphical interface! And when the display manager starts, just launch Toistaja to connect to that music server and see it behave just like an ordinary media player! Life has never been easier!
+
+* This is more of an interface wrapper to VLC, but it doesn't sound as catchy.
 
 == Installation ==
 
